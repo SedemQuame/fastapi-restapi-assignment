@@ -1,5 +1,5 @@
 # Use an official Python runtime as a parent image
-FROM python:3.8-slim
+FROM python:latest
 
 # Set the working directory in the container
 WORKDIR /app
@@ -14,8 +14,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 EXPOSE 8000
 
 # Define environment variables (if needed)
-ENV ENV_VARIABLE_NAME=value
+ENV MONGO_DB_NAME=
+ENV MONGO_URI=
+ENV TWILIO_ACCOUNT_SID=
+ENV TWILIO_AUTH_TOKEN=
 
 # Run the application
-CMD ["uvicorn", "index:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.index:app", "--host", "0.0.0.0", "--port", "8000"]
 

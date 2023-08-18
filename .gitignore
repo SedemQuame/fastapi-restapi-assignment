@@ -1,0 +1,47 @@
+# Byte-compiled / optimized / DLL files
+*/tests/__pycache__/
+*/__pycache__/*
+*.py[cod]
+*$py.class
+
+# Dependency directories
+venv/
+env/
+.venv/
+ENV/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+*.whl
+
+# Compiled source
+*.pyc
+*.pyo
+
+# Local development settings
+.idea/
+.vscode/
+
+# Ignore compiled Python files in the "app" directory
+app/**/*.pyc
+app/**/*.pyo
+
+# Ignore documentation
+docs/_build/
+
+# Ignore testing artifacts
+*.pytest_cache/
+.coverage
+.tox/
+nosetests.xml
+*.hypothesis/
+*.faker/
+
+# Ignore requirements files
+requirements.txt
+
+# Ignore .env file
+.env
