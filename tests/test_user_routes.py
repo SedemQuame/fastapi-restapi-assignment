@@ -5,10 +5,7 @@ from unittest.mock import MagicMock
 from app.routes.user_route import create_user, find_all_users, find_one_user
 from app.models.user_model import User
 from app.schemas.user_schema import UserResponse
-import sys
 import pytest
-
-print(sys.path)
 
 client = TestClient(app)
 
@@ -77,7 +74,6 @@ async def test_create_user(mock_conn):
 
 def test_find_all_users(mock_conn):
     response = find_all_users()
-    print(response)
     assert isinstance(response, list)
 
 def test_find_one_user(mock_conn):
