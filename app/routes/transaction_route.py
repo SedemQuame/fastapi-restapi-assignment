@@ -16,7 +16,7 @@ transaction_router = APIRouter()
 
 
 # MODIFIED ENDPOINT POST DEADLINE.
-@transaction_router.post("/create_transaction/", response_model=TransactionResponseDict)
+@transaction_router.post("/create_transaction", response_model=TransactionResponseDict)
 async def create_transaction(
     transaction: Transaction, background_tasks: BackgroundTasks
 ):

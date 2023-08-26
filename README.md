@@ -258,7 +258,39 @@ async def create_transaction(transaction: Transaction, background_tasks: Backgro
 
 #### Testing with pytest
 
-<talk about the tests written by using pytest>.
+![alt text](docs/images/C0A5A00D-C3DF-4502-9FF2-E8B4F7620173.jpeg)
+
+#### Designing the program
+
+Below are the steps I took when architecting this system.
+
+- Identity the key components of the system.
+- Formulate the models for these components.
+- Define the interactions of each model.
+- Identifying the flow of data.
+
+##### Identifying the key components of the system.
+
+I identified the key components of the system (highlighted in red)
+![alt text](docs/images/804C16A6-71E8-4B10-B458-F00C9148AF4A.jpeg)
+
+##### Formulate the models of these components.
+
+I then created the relevant models to support the key components of the system. These models were
+
+- The User Model
+- The Transaction Model
+
+##### Define the interactions of each model.
+
+I then modelled a relationship between these two models, using the composition approach. From the requirement spec sheet, I realised that user model, is a composition of transactions or (a user "has-a" transaction).
+
+![alt text](docs/images/AD780BD1-9707-41E7-B61E-C141AE7A0890.jpeg)
+
+These were the interactions I noted.
+
+- CRUD functionality for user models.
+- CRUD functionality for transaction models.
 
 #### Potential Scaling Strategies
 
@@ -275,4 +307,3 @@ I think the following are some strategies that when implemented correctly, could
 - Make this program more resilient to unexpected user inputs.
 - Add API authentication, using JWT tokens, to improve security.
 - Find a proper formulat for calculating the credit, currently what is done is just finding the average of absolute transactions and scaling it from 1 to 5.
-- 
