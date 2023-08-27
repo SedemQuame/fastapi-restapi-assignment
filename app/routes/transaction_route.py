@@ -3,19 +3,20 @@ from app.config.db import conn
 from app.utils.tasks_utils import send_sms, update_user_stats
 from app.models.transaction_model import Transaction
 from app.schemas.transaction_schema import (
-    TransactionResponse,
-    TransactionListResponse,
+    TransactionResponseDict,
+    TransactionResponseList,
     ErrorResponse,
 )
 from bson import ObjectId
 from app.utils.tasks_utils import get_user_by_id
-import pprint
+from typing import List, Dict
 
 # Create an APIRouter instance
 transaction_router = APIRouter()
 
 
-@transaction_router.post("/create_transaction/", response_model=TransactionResponse)
+# MODIFIED ENDPOINT POST DEADLINE.
+@transaction_router.post("/create_transaction", response_model=TransactionResponseDict)
 async def create_transaction(
     transaction: Transaction, background_tasks: BackgroundTasks
 ):
@@ -29,32 +30,40 @@ async def create_transaction(
         TransactionResponse: The created transaction.
     """
     try:
-        transaction_dict = transaction.model_dump()
-        user = get_user_by_id(transaction_dict["user_id"])
-        print(f'Transaction id: {transaction_dict["user_id"]}')
-        print(f'User: {user}')
-        # user_id_exists = await check_user_exists(transaction.user_id)  # Assuming you have a function to check user existence
-        # if not user_id_exists:
+        transaction_data = transaction.model_dump()
+        user = get_user_by_id(transaction_data["user_id"])
+        # if not user:
         #     raise HTTPException(status_code=404, detail="user_id not found.")
 
-        inserted_transaction = conn.transaction.insert_one(transaction_dict)
+        inserted_transaction = conn.transaction.insert_one(transaction_data)
 
         if inserted_transaction.inserted_id:
+            transaction_data["transaction_id"] = str(inserted_transaction.inserted_id)
             # Create background tasks to do the following.
             # Send an sms to the user
-            background_tasks.add_task(send_sms, transaction_dict)
+            background_tasks.add_task(send_sms, transaction_data)
             # Calculate new stats and update the user information
-            background_tasks.add_task(update_user_stats, transaction_dict)
-            return TransactionResponse(**transaction_dict)
+            background_tasks.add_task(update_user_stats, transaction_data)
+            return {
+                "status": "200",
+                "message": "Successfully created the transaction record.",
+                "data": Transaction(**transaction_data),
+            }
         else:
-            raise HTTPException(status_code=500, detail="Failed to create transaction")
+            return {
+                "status": "400",
+                "message": "Failed to create the transaction record.",
+                "data": Transaction(**transaction_data),
+            }
+            # raise HTTPException(status_code=500, detail="Failed to create transaction")
     except Exception as e:
         error_message = "An error occurred while creating the transaction."
         return ErrorResponse(detail=error_message)
 
 
+# FIXED ENDPOINT POST DEADLINE.
 @transaction_router.get(
-    "/find_transactions_by_user/{user_id}", response_model=TransactionListResponse
+    "/find_transactions_by_user/{user_id}", response_model=TransactionResponseList
 )
 async def read_user_transaction_history(user_id: str):
     """
@@ -67,17 +76,25 @@ async def read_user_transaction_history(user_id: str):
         List[Transaction]: List of transactions for the user.
     """
     try:
-        # TODO: Fix this function
-        transactions = conn.transaction.find({"user_id": ObjectId(user_id)})
-        response_data = {"transactions": transactions}
-        return TransactionListResponse(**transactions)
+        transactions = list(conn.transaction.find({"user_id": user_id}))
+        serialized_transactions = []
+        for transaction in transactions:
+            transaction["transaction_id"] = str(transaction["_id"])
+            serialized_transaction = Transaction(**transaction)
+            serialized_transactions.append(serialized_transaction)
+        return {
+            "status": "200",
+            "message": "Successfully returned all transactions associated to a user.",
+            "data": serialized_transactions,
+        }
     except Exception as e:
         error_message = "An error occurred while fetching transactions."
         return ErrorResponse(detail=error_message)
 
 
+# MODIFIED ENDPOINT POST DEADLINE.
 @transaction_router.get(
-    "/find_transactions_by_id/{transaction_id}", response_model=TransactionResponse
+    "/find_transactions_by_id/{transaction_id}", response_model=TransactionResponseDict
 )
 def read_transaction_history_by_id(transaction_id: str):
     """
@@ -91,16 +108,24 @@ def read_transaction_history_by_id(transaction_id: str):
     """
     try:
         transaction = conn.transaction.find_one({"_id": ObjectId(transaction_id)})
-        if not transaction:
+        if transaction:
+            transaction_data = dict(transaction)
+            transaction_data["transaction_id"] = str(transaction_data["_id"])
+            return {
+                "status": "200",
+                "message": "Successfully returned user with the specified transaction_id.",
+                "data": Transaction(**transaction_data),
+            }
+        else:
             raise HTTPException(status_code=404, detail="Transaction not found")
-        return TransactionResponse(**transaction)
     except Exception as e:
         error_message = "An error occurred while fetching the transaction."
         return ErrorResponse(detail=error_message)
 
 
+# TODO: Fix issue with returning the updated data.
 @transaction_router.put(
-    "/update_transaction/{transaction_id}", response_model=TransactionResponse
+    "/update_transaction/{transaction_id}", response_model=TransactionResponseDict
 )
 def update_transaction(transaction_id: str, update_payload: Transaction):
     """
@@ -114,20 +139,33 @@ def update_transaction(transaction_id: str, update_payload: Transaction):
         Transaction: The updated transaction.
     """
     try:
-        result = conn.transaction.find_one_and_update(
+        conn.transaction.find_one_and_update(
             {"_id": ObjectId(transaction_id)}, {"$set": dict(update_payload)}
         )
+        updated_transaction = conn.transaction.find_one(
+            {"_id": ObjectId(transaction_id)}
+        )
+        # print(list(update_transaction))
 
-        if not result:
-            raise HTTPException(status_code=404, detail="Transaction not found")
-        return TransactionResponse(**update_payload.model_dump())
+        if updated_transaction:
+            transaction_data = dict(updated_transaction)
+            transaction_data["transaction_id"] = str(transaction_data["_id"])
+            return {
+                "status": "200",
+                "message": "Successfully updated user record with the specified user_id.",
+                "data": Transaction(**transaction_data),
+            }
+        else:
+            raise HTTPException(
+                status_code=404, detail="Transaction with specified id not found"
+            )
     except Exception as e:
         error_message = "An error occurred while updating the transaction."
         return ErrorResponse(detail=error_message)
 
 
 @transaction_router.delete(
-    "/delete_transactions/{transaction_id}", response_model=TransactionResponse
+    "/delete_transactions/{transaction_id}", response_model=TransactionResponseDict
 )
 def delete_transaction(transaction_id: str):
     """
@@ -144,7 +182,11 @@ def delete_transaction(transaction_id: str):
             {"_id": ObjectId(transaction_id)}
         )
         if deleted_transaction:
-            return TransactionResponse(**deleted_transaction)
+            return {
+                "status": "200",
+                "message": "Successfully deleted transaction record with the specified transaction_id.",
+                "data": Transaction(**deleted_transaction),
+            }
         else:
             raise HTTPException(status_code=404, detail="Transaction not found")
     except Exception as e:
@@ -152,7 +194,8 @@ def delete_transaction(transaction_id: str):
         return ErrorResponse(detail=error_message)
 
 
-@transaction_router.get("/transaction_analytics/{user_id}")
+# MODIFIED ENDPOINT POST DEADLINE.
+@transaction_router.get("/transaction_analytics/{user_id}", response_model=Dict)
 def get_transaction_analytics(user_id: str):
     """
     Get the transaction analytics data of a given user_id.
@@ -164,14 +207,29 @@ def get_transaction_analytics(user_id: str):
         Transaction Analytics: The transactions analytics of the user.
     """
     try:
-        # TODO: If user does not exist, return message "Specified user not found".
         user = list(conn.user.find({"_id": ObjectId(user_id)}))[0]
-        response_data = {
-            "status": 201,
-            "average_transaction_value": user["average_transaction_value"],
-            "date_with_highest_transaction": user["date_with_highest_transaction"],
-        }
-        return response_data
+        if user:
+            return {
+                "status": "200",
+                "message": "Successfully returned the user's transaction analytics data.",
+                "data": {
+                    "user_id": user_id,
+                    "average_transaction_value": user["average_transaction_value"],
+                    "date_with_highest_transaction": user[
+                        "date_with_highest_transaction"
+                    ],
+                },
+            }
+        else:
+            return {
+                "status": "400",
+                "message": "Failed to return analytics for the specified user.",
+                "data": {
+                    "user_id": user_id,
+                    "average_transaction_value": -1.0,
+                    "date_with_highest_transaction": -1.0,
+                },
+            }
     except Exception as e:
         error_message = "An error occurred while fetching transactions."
         return ErrorResponse(detail=error_message)

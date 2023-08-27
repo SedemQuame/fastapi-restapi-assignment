@@ -2,22 +2,21 @@ from typing import List
 from pydantic import BaseModel
 from datetime import datetime
 from enum import Enum
+from bson import ObjectId
+from app.models.transaction_model import Transaction
 
 
-class TransactionType(str, Enum):
-    credit = "credit"
-    debit = "debit"
-
-class TransactionResponse(BaseModel):
-    user_id: str
-    full_name: str
-    transaction_date: datetime
-    transaction_amount: float
-    transaction_type: TransactionType
+# MODIFIED MODEL POST DEADLINE.
+class TransactionResponseDict(BaseModel):
+    status: str
+    message: str
+    data: Transaction
 
 
-class TransactionListResponse(BaseModel):
-    transactions: List[TransactionResponse]
+class TransactionResponseList(BaseModel):
+    status: str
+    message: str
+    data: List
 
 
 class ErrorResponse(BaseModel):
